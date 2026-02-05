@@ -11,7 +11,7 @@
     <Authors>Alex Uldahl Pedersen</Authors>
     <Description>MQTT client library for .NET devs the way we understand things</Description>
     <PackageTags>mqtt;controllers;hivemq</PackageTags>
-    <RepositoryUrl>https://github.com/uldahlalex/iot</RepositoryUrl>
+    <RepositoryUrl>https://github.com/uldahlalex/Mqtt.Controllers</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RootNamespace>Mqtt.Controllers</RootNamespace>
