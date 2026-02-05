@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Mqtt.Controllers.Tests/">
+    <Project Path="Mqtt.Controllers.Tests/Mqtt.Controllers.Tests.csproj" />
+  </Folder>
+  <Project Path="Mqtt.Controllers/Mqtt.Controllers.csproj" />
+</Solution>
