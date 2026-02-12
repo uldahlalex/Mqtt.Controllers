@@ -8,72 +8,70 @@ ASP.NET-style controllers for MQTT. Subscribe to topics using attributes, with f
 dotnet add package Mqtt.Controllers
 ```
 
-## Setup
+## Getting Started
 
-```csharp
+Open `simulated-weather-station.html` in a browser to start a simulated IoT weather station that publishes telemetry to a public MQTT broker. Then run the example app to receive the data.
+
+### Setup
+
+```cs
+// ExampleApp.GettingStarted/Program.cs
+
+using Mqtt.Controllers;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddMqttControllers();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
+app.MapControllers();
+
 var mqtt = app.Services.GetRequiredService<IMqttClientService>();
-await mqtt.ConnectAsync("broker.example.com", 1883, "username", "password");
+await mqtt.ConnectAsync("broker.hivemq.com", 1883);
 
 app.Run();
+
 ```
 
-## Creating Controllers
+### Controller
 
-Inherit from `MqttController` and use `[MqttRoute]` to subscribe to topics:
+```cs
+// ExampleApp.GettingStarted/WeatherStationController.cs
 
-```csharp
-public class DeviceController(ILogger<DeviceController> logger, MyDbContext db) : MqttController
+using Mqtt.Controllers;
+
+namespace ExampleApp.GettingStarted;
+
+public class WeatherStationController(ILogger<WeatherStationController> logger) : MqttController
 {
-    // Simple topic - payload is deserialized from JSON
-    [MqttRoute("weather")]
-    public async Task HandleWeather(WeatherData data)
+    [MqttRoute("station/+/sensor/{sensorId}/telemetry")]
+    public Task HandleTelemetry(string sensorId, SensorTelemetry data)
     {
-        logger.LogInformation("Temperature: {Temp}", data.Temperature);
-    }
-
-    // Topic with parameter - {deviceId} extracted from topic
-    [MqttRoute("devices/{deviceId}/telemetry")]
-    public async Task HandleTelemetry(string deviceId, TelemetryData data)
-    {
-        db.Readings.Add(new Reading { DeviceId = deviceId, Value = data.Value });
-        await db.SaveChangesAsync();
-    }
-
-    // Raw payload access
-    [MqttRoute("devices/{deviceId}/raw")]
-    public Task HandleRaw(string deviceId, string payload)
-    {
-        logger.LogInformation("Device {Id} sent: {Payload}", deviceId, payload);
+        logger.LogInformation("{Sensor} | {Temp}C | {Humidity}% | {Pressure} hPa",
+            sensorId, data.Temperature, data.Humidity, data.Pressure);
         return Task.CompletedTask;
     }
 }
 
-public record WeatherData(double Temperature, double Humidity);
-public record TelemetryData(double Value, string Unit);
+public record SensorTelemetry(
+    string SensorId,
+    string SensorName,
+    string StationId,
+    DateTime Timestamp,
+    double Temperature,
+    double Humidity,
+    double Pressure,
+    int LightLevel,
+    string Status);
+
 ```
 
-## Publishing Messages
+### Run it
 
-Inject `IMqttClientService` anywhere to publish:
-
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class CommandsController(IMqttClientService mqtt) : ControllerBase
-{
-    [HttpPost]
-    public async Task<IActionResult> SendCommand([FromBody] Command cmd)
-    {
-        await mqtt.PublishAsync($"devices/{cmd.DeviceId}/commands", JsonSerializer.Serialize(cmd));
-        return Ok();
-    }
-}
+```bash
+dotnet run --project ExampleApp.GettingStarted
 ```
 
 ## Topic Patterns
@@ -94,6 +92,39 @@ public class CommandsController(IMqttClientService mqtt) : ControllerBase
 | `string {name}` | Captured from `{name}` in route |
 | `MyDto data` | JSON-deserialized from payload |
 | `CancellationToken` | Cancellation token |
+
+## Publishing Messages
+
+Inject `IMqttClientService` anywhere to publish. This example exposes an HTTP endpoint that forwards commands to the simulated weather station:
+
+```cs
+// ExampleApp.GettingStarted/WebClientController.cs
+
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Mqtt.Controllers;
+
+namespace ExampleApp.GettingStarted;
+
+[ApiController]
+[Route("api/[controller]")]
+public class WebClientController(IMqttClientService mqtt) : ControllerBase
+{
+    [HttpPost("{sensorId}/command")]
+    public async Task<IActionResult> SendCommand(string sensorId, [FromBody] JsonElement command)
+    {
+        await mqtt.PublishAsync($"station/aaa/sensor/{sensorId}/command", command.GetRawText());
+        return Ok();
+    }
+}
+
+```
+
+```bash
+curl -X POST http://localhost:5000/api/webclient/sensor-outdoor/command \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"setInterval","value":10}'
+```
 
 ## License
 
