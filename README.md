@@ -40,6 +40,7 @@ app.Run();
 ```cs
 // ExampleApp.GettingStarted/WeatherStationController.cs
 
+using System.Text.Json;
 using Mqtt.Controllers;
 
 namespace ExampleApp.GettingStarted;
@@ -47,11 +48,9 @@ namespace ExampleApp.GettingStarted;
 public class WeatherStationController(ILogger<WeatherStationController> logger) : MqttController
 {
     [MqttRoute("station/+/sensor/{sensorId}/telemetry")]
-    public Task HandleTelemetry(string sensorId, SensorTelemetry data)
+    public async Task HandleTelemetry(string sensorId, SensorTelemetry data)
     {
-        logger.LogInformation("{Sensor} | {Temp}C | {Humidity}% | {Pressure} hPa",
-            sensorId, data.Temperature, data.Humidity, data.Pressure);
-        return Task.CompletedTask;
+        logger.LogInformation("Sensor: "+sensorId+", data: "+JsonSerializer.Serialize(data));
     }
 }
 
@@ -111,10 +110,9 @@ namespace ExampleApp.GettingStarted;
 public class WebClientController(IMqttClientService mqtt) : ControllerBase
 {
     [HttpPost("{sensorId}/command")]
-    public async Task<IActionResult> SendCommand(string sensorId, [FromBody] JsonElement command)
+    public async Task SendCommand(string sensorId, [FromBody] JsonElement command)
     {
         await mqtt.PublishAsync($"station/aaa/sensor/{sensorId}/command", command.GetRawText());
-        return Ok();
     }
 }
 

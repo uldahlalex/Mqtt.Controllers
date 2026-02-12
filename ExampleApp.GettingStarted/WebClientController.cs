@@ -9,9 +9,8 @@ namespace ExampleApp.GettingStarted;
 public class WebClientController(IMqttClientService mqtt) : ControllerBase
 {
     [HttpPost("{sensorId}/command")]
-    public async Task<IActionResult> SendCommand(string sensorId, [FromBody] JsonElement command)
+    public async Task SendCommand(string sensorId, [FromBody] JsonElement command)
     {
         await mqtt.PublishAsync($"station/aaa/sensor/{sensorId}/command", command.GetRawText());
-        return Ok();
     }
 }
